@@ -1,10 +1,122 @@
 package net.coolpixels;
 
+import java.util.List;
+import java.util.Map;
+
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 
 public class WeeklyWorldClient implements ClientModInitializer {
+	private static MinecraftClient client = MinecraftClient.getInstance();
+
 	@Override
 	public void onInitializeClient() {
-		// This entrypoint is suitable for setting up client-specific logic, such as rendering.
+		WeeklyWorld.LOGGER.info("Initializing Weekly World client");
+		registerEvents();
+	}
+
+	public static void warnCommandsEnabled(ClientPlayerEntity player) {
+		player.sendMessage(
+				Text.literal("Objectives cannot be completed while commands are enabled.")
+						.formatted(Formatting.RED),
+				false);
+	}
+
+	public static void warnRestrictionsNotMet(ClientPlayerEntity player) {
+		player.sendMessage(
+				Text.literal("Some restrictions are not met. Objectives cannot be completed until they are.")
+						.formatted(Formatting.RED),
+				false);
+	}
+
+	public static void registerEvents() {
+		WeeklyWorld.LOGGER.info("Registering client events");
+
+		// tick (for permission checks)
+		final boolean[] lastIsOperator = { false };
+		ClientTickEvents.END_WORLD_TICK.register(listener -> {
+			// check if player is operator
+			assert client.player != null;
+			boolean isOperator = client.player.hasPermissionLevel(2);
+			if (isOperator != lastIsOperator[0]) {
+				lastIsOperator[0] = isOperator;
+				if (isOperator) {
+					// player became operator
+					warnCommandsEnabled(client.player);
+				} else {
+					// player is no longer operator
+					client.player.sendMessage(
+							Text.literal("You are no longer an operator. Objectives can now be completed.")
+									.formatted(Formatting.GREEN),
+							false);
+				}
+			}
+		});
+
+		// world join
+		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+			// send greeting
+			ClientPlayerEntity player = MinecraftClient.getInstance().player;
+			player.sendMessage(
+					Text.literal("Welcome to Weekly World!").formatted(Formatting.GOLD,
+							Formatting.BOLD),
+					false);
+
+			// send objectives
+			List<Map<String, Object>> objectives = ChallengeData.getObjectives();
+			player.sendMessage(Text.literal(String.format("Objective%s:", objectives.size() == 1 ? "" : "s"))
+					.formatted(Formatting.BOLD), false);
+			for (Map<String, Object> objective : objectives) {
+				String type = (String) objective.get("type");
+				String content = (String) objective.get("content");
+				player.sendMessage(
+						Text.literal(String.format("☐ %s", ChallengeData.formatObjective(type, content))),
+						false);
+			}
+
+			// send restrictions
+			List<Map<String, Object>> restrictions = ChallengeData.getRestrictions();
+			boolean allRestrictionsMet = true;
+			if (!restrictions.isEmpty()) {
+				player.sendMessage(Text.literal("Restrictions:").formatted(Formatting.BOLD), false);
+				for (Map<String, Object> restriction : restrictions) {
+					String type = (String) restriction.get("type");
+					String content = (String) restriction.get("content");
+					boolean met = ChallengeData.restrictionMet(client, type, content);
+					if (!met)
+						allRestrictionsMet = false;
+					player.sendMessage(
+							Text.literal(String.format("%s %s", met ? "☑" : "☐",
+									ChallengeData.formatRestriction(type, content))),
+							false);
+				}
+			}
+
+			if (!allRestrictionsMet) {
+				warnRestrictionsNotMet(player);
+			}
+
+			// check if player is operator
+			assert client.player != null;
+			boolean isOperator = client.player.hasPermissionLevel(2);
+			lastIsOperator[0] = isOperator;
+			if (isOperator) {
+				warnCommandsEnabled(player);
+			}
+		});
+	}
+
+	public static void reportEvent(String type, String value) {
+		// determine if the player is an operator
+		assert client.player != null;
+		boolean isOperator = client.player.hasPermissionLevel(2);
+
+		// log to console
+		WeeklyWorld.LOGGER.info("Reporting event with type {} and value {} (valid: {})", type, value, !isOperator);
 	}
 }

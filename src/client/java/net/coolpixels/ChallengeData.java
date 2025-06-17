@@ -1,7 +1,6 @@
 package net.coolpixels;
 
 import java.util.*;
-import java.util.stream.Collectors;
 import java.io.*;
 
 import com.google.gson.Gson;
@@ -16,9 +15,34 @@ public class ChallengeData {
                                                                                         // objective keys
     private static final Gson GSON = new Gson();
 
+    // Loads the challenge objectives from the resource JSON file
+    public static Map<String, Object> loadChallengeObjectives() {
+        try (InputStream is = ChallengeData.class.getClassLoader().getResourceAsStream(DATA_NAME)) {
+            if (is == null) {
+                System.err.println("Could not find objectives file: " + DATA_NAME);
+                return Collections.emptyMap();
+            }
+            try (Reader reader = new InputStreamReader(is)) {
+                return GSON.fromJson(reader, new TypeToken<Map<String, Object>>() {
+                }.getType());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return Collections.emptyMap();
+        }
+    }
+
     // Example objectives (should be fetched from server in real use)
+    @SuppressWarnings("unchecked")
     public static List<Map<String, Object>> getObjectives() {
-        return List.of(Map.of("type", "dimension", "content", "minecraft:the_nether", "complete", false));
+        Map<String, Object> data = loadChallengeObjectives();
+        if (data.containsKey("tasks")) {
+            Object tasks = data.get("tasks");
+            if (tasks instanceof List<?>) {
+                return (List<Map<String, Object>>) tasks;
+            }
+        }
+        return List.of();
     }
 
     public static List<Map<String, Object>> getRestrictions() {
@@ -65,8 +89,30 @@ public class ChallengeData {
         return instance;
     }
 
+    // Get the world identifier synced from the server
+    private static String getWorldIdentifier(MinecraftClient client) {
+        String worldIdentifier = WorldUUIDSyncClient.getCurrentWorldIdentifier();
+        if (worldIdentifier != null) {
+            WeeklyWorld.LOGGER.debug("Using synced world identifier: {}", worldIdentifier);
+            return worldIdentifier;
+        }
+
+        // Fallback if identifier not yet synced from server
+        if (client.world == null) {
+            WeeklyWorld.LOGGER.debug("Using fallback identifier: unknown (no world)");
+            return "unknown";
+        }
+        // Use dimension name as fallback (not unique, but avoids crash)
+        String fallback = client.world.getRegistryKey().getValue().toString();
+        WeeklyWorld.LOGGER.debug("Using fallback identifier: {} (dimension key)", fallback);
+        return fallback;
+    }
+
+    // Store completions for all worlds in a single file, indexed by world
+    // identifier
     private void load(MinecraftClient client) {
-        File file = getSaveFile(client);
+        File file = getSaveFile();
+        worldObjectiveCompletions.clear();
         if (file.exists()) {
             try (Reader reader = new FileReader(file)) {
                 Map<String, Set<String>> data = GSON.fromJson(reader, new TypeToken<Map<String, Set<String>>>() {
@@ -80,7 +126,7 @@ public class ChallengeData {
     }
 
     private void save(MinecraftClient client) {
-        File file = getSaveFile(client);
+        File file = getSaveFile();
         file.getParentFile().mkdirs();
         try (Writer writer = new FileWriter(file)) {
             GSON.toJson(worldObjectiveCompletions, writer);
@@ -89,29 +135,25 @@ public class ChallengeData {
         }
     }
 
-    private static File getSaveFile(MinecraftClient client) {
-        // Always use the config directory for client-side persistence
+    private static File getSaveFile() {
         File configDir = FabricLoader.getInstance().getConfigDir().toFile();
         return new File(configDir, DATA_NAME);
     }
 
     // --- Objective completion logic ---
-    private static String getWorldId(MinecraftClient client) {
-        if (client.world == null)
-            return "unknown";
-        return client.world.getRegistryKey().getValue().toString();
-    }
-
     private static String getObjectiveKey(String type, String content) {
-        return type + ":" + content;
+        return type + "|" + content;
     }
 
     public static boolean isObjectiveCompleted(MinecraftClient client, String type, String content) {
         ChallengeData data = get(client);
         if (data == null)
             return false;
-        String worldId = getWorldId(client);
-        Set<String> completed = data.worldObjectiveCompletions.getOrDefault(worldId, Collections.emptySet());
+        String worldIdentifier = getWorldIdentifier(client);
+        Set<String> completed = data.worldObjectiveCompletions.getOrDefault(worldIdentifier, Collections.emptySet());
+        WeeklyWorld.LOGGER.debug("Checking completion for {} in world {}: {}", getObjectiveKey(type, content),
+                worldIdentifier, completed);
+        WeeklyWorld.LOGGER.debug("Completed objectives: {}", completed);
         return completed.contains(getObjectiveKey(type, content));
     }
 
@@ -119,9 +161,57 @@ public class ChallengeData {
         ChallengeData data = get(client);
         if (data == null)
             return;
-        String worldId = getWorldId(client);
-        data.worldObjectiveCompletions.computeIfAbsent(worldId, k -> new HashSet<>())
+        String worldIdentifier = getWorldIdentifier(client);
+        data.worldObjectiveCompletions.computeIfAbsent(worldIdentifier, k -> new HashSet<>())
                 .add(getObjectiveKey(type, content));
         data.save(client);
+    }
+
+    // Clean up challenge data for worlds that no longer exist
+    public static void cleanupDeletedWorlds(MinecraftClient client) {
+        ChallengeData data = get(client);
+        if (data == null)
+            return;
+
+        // Get the list of existing world folders
+        Set<String> existingWorlds = getExistingWorldFolders(client);
+
+        // Remove completion data for worlds that no longer exist
+        data.worldObjectiveCompletions.entrySet().removeIf(entry -> {
+            String worldId = entry.getKey();
+            // Check if the world identifier exists in our list of existing worlds
+            boolean exists = existingWorlds.contains(worldId)
+                    || existingWorlds.stream().anyMatch(world -> worldId.startsWith(world));
+            if (!exists) {
+                WeeklyWorld.LOGGER.info("Removing challenge data for deleted world: {}", worldId);
+            }
+            return !exists;
+        });
+
+        data.save(client);
+    }
+
+    private static Set<String> getExistingWorldFolders(MinecraftClient client) {
+        Set<String> existingWorlds = new HashSet<>();
+
+        // Get the saves directory path
+        File savesDir = new File(client.runDirectory, "saves");
+
+        if (savesDir.exists() && savesDir.isDirectory()) {
+            File[] worldFolders = savesDir.listFiles(File::isDirectory);
+
+            if (worldFolders != null) {
+                for (File worldFolder : worldFolders) {
+                    String worldName = worldFolder.getName();
+                    existingWorlds.add(worldName);
+                    // Also add dimension-specific identifiers for backwards compatibility
+                    existingWorlds.add(worldName + "_minecraft:overworld");
+                    existingWorlds.add(worldName + "_minecraft:the_nether");
+                    existingWorlds.add(worldName + "_minecraft:the_end");
+                }
+            }
+        }
+
+        return existingWorlds;
     }
 }

@@ -17,6 +17,7 @@ public class WeeklyWorldClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		WeeklyWorld.LOGGER.info("Initializing Weekly World client");
+		WorldUUIDSyncClient.register();
 		registerEvents();
 	}
 
@@ -100,6 +101,9 @@ public class WeeklyWorldClient implements ClientModInitializer {
 
 		// world join
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+			// Clean up data for deleted worlds
+			ChallengeData.cleanupDeletedWorlds(client);
+
 			// send greeting
 			ClientPlayerEntity player = MinecraftClient.getInstance().player;
 			player.sendMessage(
@@ -107,19 +111,21 @@ public class WeeklyWorldClient implements ClientModInitializer {
 							Formatting.BOLD),
 					false);
 
-			// send objectives
+			// send objectives (note: completion status will be updated once world UUID is
+			// synced)
 			List<Map<String, Object>> objectives = ChallengeData.getObjectives();
 			player.sendMessage(Text.literal(String.format("Objective%s:", objectives.size() == 1 ? "" : "s"))
 					.formatted(Formatting.BOLD), false);
 			for (Map<String, Object> objective : objectives) {
 				String type = (String) objective.get("type");
 				String content = (String) objective.get("content");
-				boolean completed = ChallengeData.isObjectiveCompleted(client, type, content);
+				// Always show unchecked initially, will be updated when UUID arrives
 				player.sendMessage(
-						Text.literal(String.format("%s %s", completed ? "☑" : "☐",
-								ChallengeData.formatObjective(type, content))),
+						Text.literal(String.format("☐ %s", ChallengeData.formatObjective(type, content))),
 						false);
 			}
+			player.sendMessage(Text.literal("(Completion status will be updated shortly...)").formatted(Formatting.GRAY,
+					Formatting.ITALIC), false);
 
 			// send restrictions
 			List<Map<String, Object>> restrictions = ChallengeData.getRestrictions();
@@ -151,6 +157,11 @@ public class WeeklyWorldClient implements ClientModInitializer {
 				warnCommandsEnabled(player);
 			}
 		});
+
+		// world disconnect - clear world identifier
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+			WorldUUIDSyncClient.clearWorldIdentifier();
+		});
 	}
 
 	public static void reportEvent(String type, String value) {
@@ -175,6 +186,27 @@ public class WeeklyWorldClient implements ClientModInitializer {
 				}
 				return;
 			}
+		}
+	}
+
+	public static void displayObjectivesWithCorrectStatus() {
+		MinecraftClient client = MinecraftClient.getInstance();
+		if (client.player == null)
+			return;
+
+		ClientPlayerEntity player = client.player;
+
+		// Display objectives with correct completion status
+		List<Map<String, Object>> objectives = ChallengeData.getObjectives();
+		player.sendMessage(Text.literal("Updated objective status:").formatted(Formatting.GOLD), false);
+		for (Map<String, Object> objective : objectives) {
+			String type = (String) objective.get("type");
+			String content = (String) objective.get("content");
+			boolean completed = ChallengeData.isObjectiveCompleted(client, type, content);
+			player.sendMessage(
+					Text.literal(String.format("%s %s", completed ? "☑" : "☐",
+							ChallengeData.formatObjective(type, content))),
+					false);
 		}
 	}
 }

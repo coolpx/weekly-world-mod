@@ -1,0 +1,19 @@
+{
+  "week": 1,
+  "title": "Reach the Nether in hardcore mode",
+  "description": "Reach the Nether in hardcore mode.",
+  "startDate": "2025-06-17T08:14:28.840Z",
+  "endDate": "2025-06-24T08:14:28.840Z",
+  "tasks": [
+    {
+      "type": "dimension",
+      "content": "minecraft:the_nether",
+      "title": "Enter the Nether",
+      "description": "Enter the Nether"
+    }
+  ],
+  "mods": [],
+  "restrictions": [
+    { "type": "hardcore", "content": "true", "title": "Hardcore mode" }
+  ]
+}

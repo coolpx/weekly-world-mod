@@ -114,8 +114,10 @@ public class WeeklyWorldClient implements ClientModInitializer {
 			for (Map<String, Object> objective : objectives) {
 				String type = (String) objective.get("type");
 				String content = (String) objective.get("content");
+				boolean completed = ChallengeData.isObjectiveCompleted(client, type, content);
 				player.sendMessage(
-						Text.literal(String.format("☐ %s", ChallengeData.formatObjective(type, content))),
+						Text.literal(String.format("%s %s", completed ? "☑" : "☐",
+								ChallengeData.formatObjective(type, content))),
 						false);
 			}
 
@@ -153,7 +155,8 @@ public class WeeklyWorldClient implements ClientModInitializer {
 
 	public static void reportEvent(String type, String value) {
 		// log to console
-		WeeklyWorld.LOGGER.info("Reporting event with type {} and value {} (valid: {})", type, value, canCompleteObjectives(client.player));
+		WeeklyWorld.LOGGER.info("Reporting event with type {} and value {} (valid: {})", type, value,
+				canCompleteObjectives(client.player));
 
 		// check if event matches an objective
 		for (Map<String, Object> objective : ChallengeData.getObjectives()) {
@@ -161,8 +164,10 @@ public class WeeklyWorldClient implements ClientModInitializer {
 				// check if player can complete objectives
 				if (canCompleteObjectives(client.player)) {
 					// mark objective as completed
+					ChallengeData.markObjectiveCompleted(client, type, value);
 					client.player.sendMessage(
-							Text.literal(String.format("Objective completed: %s", ChallengeData.formatObjective(type, value)))
+							Text.literal(String.format("Objective completed: %s",
+									ChallengeData.formatObjective(type, value)))
 									.formatted(Formatting.GREEN),
 							false);
 				} else {

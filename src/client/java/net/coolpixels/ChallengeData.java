@@ -4,13 +4,22 @@ import java.util.List;
 import java.util.Map;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.world.PersistentState;
 
-public class ChallengeData {
+public class ChallengeData extends PersistentState {
+    // data fetching
     public static List<Map<String, Object>> getObjectives() {
         // TODO: fetch actual objectives from server
         return List.of(Map.of("type", "dimension", "content", "minecraft:the_nether", "complete", false));
     }
 
+    public static List<Map<String, Object>> getRestrictions() {
+        // TODO: fetch actual restrictions from server
+        return List.of(
+                Map.of("type", "hardcore", "content", "true"));
+    }
+
+    // formatting
     public static String formatObjective(String type, String content) {
         if (type == "dimension") {
             switch (content) {
@@ -27,11 +36,6 @@ public class ChallengeData {
         return String.format("%s (%s)", type, content);
     }
 
-    public static List<Map<String, Object>> getRestrictions() {
-        return List.of(
-                Map.of("type", "hardcore", "content", "true"));
-    }
-
     public static String formatRestriction(String type, String content) {
         if (type.equals("hardcore")) {
             return "Hardcore mode enabled";
@@ -41,6 +45,7 @@ public class ChallengeData {
         return String.format("%s (%s)", type, content);
     }
 
+    // validation
     public static boolean restrictionMet(MinecraftClient client, String type, String content) {
         if (type.equals("hardcore")) {
             return client.world.getLevelProperties().isHardcore() == Boolean.parseBoolean(content);

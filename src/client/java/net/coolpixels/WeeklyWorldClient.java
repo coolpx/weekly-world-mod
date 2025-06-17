@@ -20,6 +20,43 @@ public class WeeklyWorldClient implements ClientModInitializer {
 		registerEvents();
 	}
 
+	// validation
+	public static boolean isOperator(ClientPlayerEntity player) {
+		// check if player is operator
+		if (player == null) {
+			WeeklyWorld.LOGGER.warn("Player is null, cannot check if operator");
+			return false;
+		}
+		return player.hasPermissionLevel(2);
+	}
+
+	public static boolean areRestrictionsMet(ClientPlayerEntity player) {
+		// check if all restrictions are met
+		if (player == null) {
+			WeeklyWorld.LOGGER.warn("Player is null, cannot check restrictions");
+			return false;
+		}
+		List<Map<String, Object>> restrictions = ChallengeData.getRestrictions();
+		for (Map<String, Object> restriction : restrictions) {
+			String type = (String) restriction.get("type");
+			String content = (String) restriction.get("content");
+			if (!ChallengeData.restrictionMet(client, type, content)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	public static boolean canCompleteObjectives(ClientPlayerEntity player) {
+		// check if player is operator or restrictions are not met
+		if (player == null) {
+			WeeklyWorld.LOGGER.warn("Player is null, cannot check if objectives can be completed");
+			return false;
+		}
+		return !isOperator(player) && areRestrictionsMet(player);
+	}
+
+	// warnings
 	public static void warnCommandsEnabled(ClientPlayerEntity player) {
 		player.sendMessage(
 				Text.literal("Objectives cannot be completed while commands are enabled.")
@@ -34,6 +71,7 @@ public class WeeklyWorldClient implements ClientModInitializer {
 				false);
 	}
 
+	// main
 	public static void registerEvents() {
 		WeeklyWorld.LOGGER.info("Registering client events");
 
@@ -42,7 +80,9 @@ public class WeeklyWorldClient implements ClientModInitializer {
 		ClientTickEvents.END_WORLD_TICK.register(listener -> {
 			// check if player is operator
 			assert client.player != null;
-			boolean isOperator = client.player.hasPermissionLevel(2);
+			boolean isOperator = isOperator(client.player);
+
+			// if operator status changed, warn player
 			if (isOperator != lastIsOperator[0]) {
 				lastIsOperator[0] = isOperator;
 				if (isOperator) {
@@ -103,7 +143,7 @@ public class WeeklyWorldClient implements ClientModInitializer {
 
 			// check if player is operator
 			assert client.player != null;
-			boolean isOperator = client.player.hasPermissionLevel(2);
+			boolean isOperator = isOperator(client.player);
 			lastIsOperator[0] = isOperator;
 			if (isOperator) {
 				warnCommandsEnabled(player);
@@ -112,11 +152,24 @@ public class WeeklyWorldClient implements ClientModInitializer {
 	}
 
 	public static void reportEvent(String type, String value) {
-		// determine if the player is an operator
-		assert client.player != null;
-		boolean isOperator = client.player.hasPermissionLevel(2);
-
 		// log to console
-		WeeklyWorld.LOGGER.info("Reporting event with type {} and value {} (valid: {})", type, value, !isOperator);
+		WeeklyWorld.LOGGER.info("Reporting event with type {} and value {} (valid: {})", type, value, canCompleteObjectives(client.player));
+
+		// check if event matches an objective
+		for (Map<String, Object> objective : ChallengeData.getObjectives()) {
+			if (objective.get("type").equals(type) && objective.get("content").equals(value)) {
+				// check if player can complete objectives
+				if (canCompleteObjectives(client.player)) {
+					// mark objective as completed
+					client.player.sendMessage(
+							Text.literal(String.format("Objective completed: %s", ChallengeData.formatObjective(type, value)))
+									.formatted(Formatting.GREEN),
+							false);
+				} else {
+					warnRestrictionsNotMet(client.player);
+				}
+				return;
+			}
+		}
 	}
 }

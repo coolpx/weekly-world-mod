@@ -2,6 +2,9 @@ package net.coolpixels;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -111,21 +114,8 @@ public class WeeklyWorldClient implements ClientModInitializer {
 							Formatting.BOLD),
 					false);
 
-			// send objectives (note: completion status will be updated once world UUID is
-			// synced)
-			List<Map<String, Object>> objectives = ChallengeData.getObjectives();
-			player.sendMessage(Text.literal(String.format("Objective%s:", objectives.size() == 1 ? "" : "s"))
-					.formatted(Formatting.BOLD), false);
-			for (Map<String, Object> objective : objectives) {
-				String type = (String) objective.get("type");
-				String content = (String) objective.get("content");
-				// Always show unchecked initially, will be updated when UUID arrives
-				player.sendMessage(
-						Text.literal(String.format("☐ %s", ChallengeData.formatObjective(type, content))),
-						false);
-			}
-			player.sendMessage(Text.literal("(Completion status will be updated shortly...)").formatted(Formatting.GRAY,
-					Formatting.ITALIC), false);
+			// Schedule delayed objective display to wait for world identifier
+			scheduleDelayedObjectiveDisplay(player, 3000); // Wait up to 3 seconds
 
 			// send restrictions
 			List<Map<String, Object>> restrictions = ChallengeData.getRestrictions();
@@ -198,7 +188,7 @@ public class WeeklyWorldClient implements ClientModInitializer {
 
 		// Display objectives with correct completion status
 		List<Map<String, Object>> objectives = ChallengeData.getObjectives();
-		player.sendMessage(Text.literal("Updated objective status:").formatted(Formatting.GOLD), false);
+		player.sendMessage(Text.literal("Objectives:").formatted(Formatting.BOLD), false);
 		for (Map<String, Object> objective : objectives) {
 			String type = (String) objective.get("type");
 			String content = (String) objective.get("content");
@@ -208,5 +198,69 @@ public class WeeklyWorldClient implements ClientModInitializer {
 							ChallengeData.formatObjective(type, content))),
 					false);
 		}
+	}
+
+	private static void scheduleDelayedObjectiveDisplay(ClientPlayerEntity player, long delayMs) {
+		AtomicBoolean objectivesDisplayed = new AtomicBoolean(false);
+
+		Timer timer = new Timer();
+		timer.schedule(new TimerTask() {
+			@Override
+			public void run() {
+				// Check if we have received the world identifier
+				String worldIdentifier = WorldUUIDSyncClient.getCurrentWorldIdentifier();
+
+				if (worldIdentifier != null) {
+					// We have the world identifier, display objectives with correct status
+					MinecraftClient.getInstance().execute(() -> {
+						if (!objectivesDisplayed.getAndSet(true)) {
+							displayObjectivesWithCorrectStatus();
+						}
+					});
+				} else {
+					// Still no world identifier, display with "will be updated shortly" message
+					MinecraftClient.getInstance().execute(() -> {
+						if (!objectivesDisplayed.getAndSet(true)) {
+							displayObjectivesWithPendingStatus(player);
+						}
+					});
+				}
+				timer.cancel();
+			}
+		}, delayMs);
+
+		// Also check periodically in case the identifier arrives before the delay
+		Timer checkTimer = new Timer();
+		checkTimer.schedule(new TimerTask() {
+			@Override
+			public void run() {
+				String worldIdentifier = WorldUUIDSyncClient.getCurrentWorldIdentifier();
+				if (worldIdentifier != null) {
+					MinecraftClient.getInstance().execute(() -> {
+						if (!objectivesDisplayed.getAndSet(true)) {
+							displayObjectivesWithCorrectStatus();
+						}
+					});
+					checkTimer.cancel();
+					timer.cancel();
+				}
+			}
+		}, 100, 100); // Check every 100ms
+	}
+
+	private static void displayObjectivesWithPendingStatus(ClientPlayerEntity player) {
+		List<Map<String, Object>> objectives = ChallengeData.getObjectives();
+		player.sendMessage(Text.literal(String.format("Objective%s:", objectives.size() == 1 ? "" : "s"))
+				.formatted(Formatting.BOLD), false);
+		for (Map<String, Object> objective : objectives) {
+			String type = (String) objective.get("type");
+			String content = (String) objective.get("content");
+			// Always show unchecked initially, will be updated when identifier arrives
+			player.sendMessage(
+					Text.literal(String.format("☐ %s", ChallengeData.formatObjective(type, content))),
+					false);
+		}
+		player.sendMessage(Text.literal("(Completion status will be updated shortly...)").formatted(Formatting.GRAY,
+				Formatting.ITALIC), false);
 	}
 }

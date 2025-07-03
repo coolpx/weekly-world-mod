@@ -7,7 +7,7 @@ public class WorldUUIDSyncClient {
 
     public static void register() {
         // Register client-side packet handler to receive world identifier from server
-        ClientPlayNetworking.registerGlobalReceiver(WorldUUIDSync.WorldUUIDPayload.ID, (payload, context) -> {
+        ClientPlayNetworking.registerGlobalReceiver(WorldUUIDSync.WorldUUIDPayload.ID, (payload, _) -> {
             currentWorldIdentifier = payload.worldIdentifier();
 
             WeeklyWorld.LOGGER.info("Received world identifier from server: {}", currentWorldIdentifier);

@@ -81,7 +81,7 @@ public class WeeklyWorldClient implements ClientModInitializer {
 
 		// tick (for permission checks)
 		final boolean[] lastIsOperator = { false };
-		ClientTickEvents.END_WORLD_TICK.register(_ -> {
+		ClientTickEvents.END_WORLD_TICK.register(world -> {
 			// check if player is operator
 			assert client.player != null;
 			boolean isOperator = isOperator(client.player);
@@ -103,7 +103,7 @@ public class WeeklyWorldClient implements ClientModInitializer {
 		});
 
 		// world join
-		ClientPlayConnectionEvents.JOIN.register((_, _, client) -> {
+		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
 			// Clean up data for deleted worlds
 			ChallengeData.cleanupDeletedWorlds(client);
 
@@ -149,7 +149,7 @@ public class WeeklyWorldClient implements ClientModInitializer {
 		});
 
 		// world disconnect - clear world identifier
-		ClientPlayConnectionEvents.DISCONNECT.register((_, _) -> {
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
 			WorldUUIDSyncClient.clearWorldIdentifier();
 		});
 	}

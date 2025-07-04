@@ -15,6 +15,9 @@ if git tag --list | grep -q "^${tag}$"; then
     exit 1
 fi
 
+# push changes to main branch
+git push origin main
+
 # create tag and push
 git tag "$tag"
 git push origin "$tag"

@@ -14,6 +14,9 @@ if ($existingTags) {
     exit 1
 }
 
+# push changes to main branch
+git push origin main
+
 # create tag and push
 git tag $tag
 git push origin $tag

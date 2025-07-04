@@ -2,7 +2,16 @@ plugins {
 	id 'fabric-loom' version "${loom_version}"
 }
 
-version = project.mod_version
+// Function to get version from Git tag
+def getVersionFromGit() {
+	def proc = 'git describe --tags --exact-match'.execute()
+	proc.waitFor()
+	if (proc.exitValue() == 0) {
+		return proc.text.trim()
+	}
+}
+
+version = getVersionFromGit()
 group = project.maven_group
 
 base {

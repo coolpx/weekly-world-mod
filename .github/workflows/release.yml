@@ -61,8 +61,8 @@ jobs:
             ## Weekly World Mod v${{ steps.version.outputs.VERSION }}
 
             ### JAR Hashes
-            - sha1: ${{ steps.hashes.outputs.sha1 }}
-            - sha512: ${{ steps.hashes.outputs.sha512 }}
+            - sha1: `${{ steps.hashes.outputs.sha1 }}`
+            - sha512: `${{ steps.hashes.outputs.sha512 }}`
           draft: false
           prerelease: false
         env:

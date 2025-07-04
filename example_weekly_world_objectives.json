@@ -1,0 +1,18 @@
+{
+  "tasks": [
+    {
+      "type": "dimension",
+      "content": "minecraft:the_nether"
+    },
+    {
+      "type": "dimension",
+      "content": "minecraft:the_end"
+    }
+  ],
+  "restrictions": [
+    {
+      "type": "hardcore",
+      "content": "true"
+    }
+  ]
+}

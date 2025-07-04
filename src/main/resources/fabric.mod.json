@@ -1,41 +1,28 @@
 {
-	"schemaVersion": 1,
-	"id": "weekly-world",
-	"version": "${version}",
-	"name": "Weekly World",
-	"description": "Weekly World companion mod",
-	"authors": [
-		"Me!"
-	],
-	"contact": {
-		"homepage": "https://weekly.world/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
-	},
-	"license": "GPL-3.0",
-	"icon": "assets/weekly-world/icon.png",
-	"environment": "*",
-	"entrypoints": {
-		"main": [
-			"net.coolpixels.WeeklyWorld"
-		],
-		"client": [
-			"net.coolpixels.WeeklyWorldClient"
-		]
-	},
-	"mixins": [
-		"weekly-world.mixins.json",
-		{
-			"config": "weekly-world.client.mixins.json",
-			"environment": "client"
-		}
-	],
-	"depends": {
-		"fabricloader": ">=0.16.14",
-		"minecraft": "~1.21.7",
-		"java": ">=21",
-		"fabric-api": "*"
-	},
-	"suggests": {
-		"another-mod": "*"
-	}
+  "schemaVersion": 1,
+  "id": "weekly-world",
+  "version": "${version}",
+  "name": "Weekly World",
+  "description": "Weekly World companion mod",
+  "authors": ["Me!"],
+  "contact": {
+    "homepage": "https://weekly.world/",
+    "sources": "https://github.com/FabricMC/fabric-example-mod"
+  },
+  "license": "GPL-3.0",
+  "icon": "assets/weekly-world/icon.png",
+  "environment": "server",
+  "entrypoints": {
+    "main": ["net.coolpixels.WeeklyWorld"]
+  },
+  "mixins": ["weekly-world.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.14",
+    "minecraft": "~1.21.7",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "another-mod": "*"
+  }
 }

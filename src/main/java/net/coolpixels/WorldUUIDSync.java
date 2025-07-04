@@ -9,6 +9,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.packet.CustomPayload;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
@@ -201,5 +202,29 @@ public class WorldUUIDSync {
         String identifier = getOrCreateWorldIdentifier(world);
         WorldUUIDPayload payload = new WorldUUIDPayload(identifier);
         ServerPlayNetworking.send(player, payload);
+    } // Helper method for ServerPlayerData to get existing world identifiers
+
+    public static Set<String> getExistingWorldIdentifiers(MinecraftServer server) {
+        Set<String> existingWorlds = new HashSet<>();
+
+        // Get the saves directory path
+        File savesDir = new File(server.getRunDirectory().toFile(), "saves");
+
+        if (savesDir.exists() && savesDir.isDirectory()) {
+            File[] worldFolders = savesDir.listFiles(File::isDirectory);
+
+            if (worldFolders != null) {
+                for (File worldFolder : worldFolders) {
+                    String worldName = worldFolder.getName();
+                    existingWorlds.add(worldName);
+                    // Also add dimension-specific identifiers for backwards compatibility
+                    existingWorlds.add(worldName + "_minecraft:overworld");
+                    existingWorlds.add(worldName + "_minecraft:the_nether");
+                    existingWorlds.add(worldName + "_minecraft:the_end");
+                }
+            }
+        }
+
+        return existingWorlds;
     }
 }

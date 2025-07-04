@@ -1,11 +1,14 @@
 {
-	"required": true,
-	"package": "net.coolpixels.mixin",
-	"compatibilityLevel": "JAVA_21",
-	"mixins": [
-		"ExampleMixin"
-	],
-	"injectors": {
-		"defaultRequire": 1
-	}
+  "required": true,
+  "package": "net.coolpixels.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "ExampleMixin",
+    "DimensionSwitchMixin",
+    "AdvancementMixin",
+    "ItemPickupMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
 }

@@ -1,9 +1,0 @@
-{
-  "required": true,
-  "package": "net.coolpixels.mixin.client",
-  "compatibilityLevel": "JAVA_21",
-  "client": ["DimensionSwitchMixin"],
-  "injectors": {
-    "defaultRequire": 1
-  }
-}

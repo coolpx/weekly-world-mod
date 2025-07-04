@@ -44,10 +44,10 @@ jobs:
             fi
             # calculate hashes
             sha1=$(sha1sum "$file" | awk '{print $1}')
-            echo "sha1: $sha1" >> $GITHUB_OUTPUT
+            echo "sha1=$sha1" >> $GITHUB_OUTPUT
 
             sha512=$(sha512sum "$file" | awk '{print $1}')
-            echo "sha512: $sha512" >> $GITHUB_OUTPUT
+            echo "sha512=$sha512" >> $GITHUB_OUTPUT
           done
 
       - name: create release

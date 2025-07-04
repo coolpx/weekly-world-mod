@@ -10,22 +10,25 @@ import net.fabricmc.loader.api.FabricLoader;
 
 public class ChallengeData {
     private static final String DATA_NAME = "weekly_world_objectives.json";
+    private static final String PLAYERDATA_NAME = "weekly_world_player_data.json";
     private static ChallengeData instance;
     private final Map<String, Set<String>> worldObjectiveCompletions = new HashMap<>(); // worldId -> set of completed
                                                                                         // objective keys
     private static final Gson GSON = new Gson();
 
-    // Loads the challenge objectives from the resource JSON file
+    // Loads the challenge objectives from the config directory
     public static Map<String, Object> loadChallengeObjectives() {
-        try (InputStream is = ChallengeData.class.getClassLoader().getResourceAsStream(DATA_NAME)) {
-            if (is == null) {
-                System.err.println("Could not find objectives file: " + DATA_NAME);
-                return Collections.emptyMap();
-            }
-            try (Reader reader = new InputStreamReader(is)) {
-                return GSON.fromJson(reader, new TypeToken<Map<String, Object>>() {
-                }.getType());
-            }
+        File configDir = FabricLoader.getInstance().getConfigDir().toFile();
+        File objectivesFile = new File(configDir, DATA_NAME);
+
+        if (!objectivesFile.exists()) {
+            System.err.println("Could not find objectives file: " + objectivesFile.getAbsolutePath());
+            return Collections.emptyMap();
+        }
+
+        try (Reader reader = new FileReader(objectivesFile)) {
+            return GSON.fromJson(reader, new TypeToken<Map<String, Object>>() {
+            }.getType());
         } catch (IOException e) {
             e.printStackTrace();
             return Collections.emptyMap();
@@ -137,7 +140,7 @@ public class ChallengeData {
 
     private static File getSaveFile() {
         File configDir = FabricLoader.getInstance().getConfigDir().toFile();
-        return new File(configDir, DATA_NAME);
+        return new File(configDir, PLAYERDATA_NAME);
     }
 
     // --- Objective completion logic ---

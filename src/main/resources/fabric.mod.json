@@ -3,15 +3,15 @@
 	"id": "weekly-world",
 	"version": "${version}",
 	"name": "Weekly World",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "Weekly World companion mod",
 	"authors": [
 		"Me!"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
+		"homepage": "https://weekly.world/",
 		"sources": "https://github.com/FabricMC/fabric-example-mod"
 	},
-	"license": "CC0-1.0",
+	"license": "GPL-3.0",
 	"icon": "assets/weekly-world/icon.png",
 	"environment": "*",
 	"entrypoints": {
@@ -31,7 +31,7 @@
 	],
 	"depends": {
 		"fabricloader": ">=0.16.14",
-		"minecraft": "~1.21.5",
+		"minecraft": "~1.21.7",
 		"java": ">=21",
 		"fabric-api": "*"
 	},
